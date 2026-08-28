@@ -1,0 +1,69 @@
+services:
+  # 데이터베이스 (MySQL) - DATABASE_URL=mysql://app:app@db:3306/capstone 과 일치
+  db:
+    image: mysql:8.0
+    ports:
+      - "3306:3306" # 로컬에서 prisma migrate 등을 직접 돌릴 때도 접근 가능
+    environment:
+      - MYSQL_DATABASE=capstone
+      - MYSQL_USER=app
+      - MYSQL_PASSWORD=app
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - db_data:/var/lib/mysql # DB 데이터 영속화
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # 백엔드 서비스
+  backend:
+    build:
+      context: ./backend # Dockerfile이 있는 위치
+    ports:
+      - "3000:3000" # 로컬 3000번 포트와 컨테이너 3000번 포트를 연결
+    volumes:
+      - ./backend:/usr/src/app # 로컬 소스코드와 컨테이너 내부를 동기화
+      - /usr/src/app/node_modules # 컨테이너의 node_modules는 동기화에서 제외
+    environment:
+      - ML_SERVICE_URL=http://ml-service:8000 # ML 마이크로서비스 주소 (컨테이너 네트워크)
+    # 기동 시 schema.prisma를 DB에 직접 동기화(prisma db push) 후 개발 서버 실행.
+    # migrate/shadow DB 없이 app 유저 권한만으로 동작.
+    command: sh -c "npx prisma db push --accept-data-loss && npm run start:dev"
+    depends_on:
+      db:
+        condition: service_healthy # DB가 준비된 뒤 백엔드 기동
+      ml-service:
+        condition: service_started
+
+  # ML 마이크로서비스 (Python/FastAPI) - STT 및 영상 멀티모달 분석
+  ml-service:
+    build:
+      context: ./ml-service
+    ports:
+      - "8000:8000" # 로컬 8000번 포트와 컨테이너 8000번 포트를 연결
+    volumes:
+      - ./ml-service:/usr/src/app # 로컬 소스코드와 컨테이너 내부를 동기화
+      - ml_model_cache:/root/.cache # whisper 등 모델 캐시 보존
+    environment:
+      - ML_WHISPER_MODEL=small
+      - ML_WHISPER_DEVICE=cpu
+      - ML_WHISPER_COMPUTE_TYPE=int8
+
+  # 프론트엔드 서비스
+  frontend:
+    build:
+      context: ./frontend # Dockerfile이 있는 위치
+    ports:
+      - "5173:5173" # 로컬 5173번 포트와 컨테이너 5173번 포트를 연결 (Vite 기본 포트)
+    volumes:
+      - ./frontend:/usr/src/app # 로컬 소스코드와 컨테이너 내부를 동기화
+      - /usr/src/app/node_modules # 컨테이너의 node_modules는 동기화에서 제외
+    environment:
+      - CHOKIDAR_USEPOLLING=true # 파일 변경 감지를 위한 폴링 방식 사용 (Windows 호환성)
+      - VITE_API_BASE_URL=https://apijob.jicp.cloud
+
+volumes:
+  ml_model_cache: # whisper/mediapipe 모델 캐시 영속화
+  db_data: # MySQL 데이터 영속화

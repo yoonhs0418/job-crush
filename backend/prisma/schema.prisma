@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. 유저 테이블
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  resumes         Resume[]
+  analysisResults AnalysisResult[]
+
+  @@map("users")
+}
+
+// 2. 기업 정보 테이블[cite: 1]
+model Company {
+  id             Int      @id @default(autoincrement())
+  companyName    String   @map("company_name")
+  industry       String
+  jobDescription String   @map("job_description") @db.Text
+  vision         String   @db.Text
+
+  analysisResults AnalysisResult[]
+
+  @@map("companies")
+}
+
+// 3. 자기소개서 테이블[cite: 1]
+model Resume {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  title       String
+  contentText String   @map("content_text") @db.Text
+  pdfUrl      String?  @map("pdf_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user            User             @relation(fields: [userId], references: [id])
+  analysisResults AnalysisResult[]
+
+  @@map("resumes")
+}
+
+// 4. 분석 결과 테이블[cite: 1]
+model AnalysisResult {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @map("user_id")
+  resumeId          Int      @map("resume_id")
+  companyId         Int      @map("company_id")
+  totalScore        Int      @map("total_score")
+  overallAssessment Json     @map("overall_assessment")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user       User       @relation(fields: [userId], references: [id])
+  resume     Resume     @relation(fields: [resumeId], references: [id])
+  company    Company    @relation(fields: [companyId], references: [id])
+  interviews Interview[]
+
+  @@map("analysis_results")
+}
+
+// 5. 면접 세션 테이블[cite: 1]
+model Interview {
+  id          Int       @id @default(autoincrement())
+  analysisId  Int       @map("analysis_id")
+  status      String // e.g., "PENDING", "PROCESSING", "COMPLETED"
+  mediaUrl    String?   @map("media_url") // 세션 전체 녹화 영상 참조
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  analysis           AnalysisResult      @relation(fields: [analysisId], references: [id])
+  interviewQuestions InterviewQuestion[]
+  evaluation         InterviewEvaluation?
+
+  @@map("interviews")
+}
+
+// 6. 면접 질문 테이블[cite: 1]
+model InterviewQuestion {
+  id           Int     @id @default(autoincrement())
+  interviewId  Int     @map("interview_id")
+  parentId     Int?    @map("parent_id") // 꼬리질문이면 부모 질문 id
+  orderIndex   Int     @default(0) @map("order_index")
+  type         String  @default("initial") // "initial" | "follow_up"
+  questionText String  @map("question_text") @db.Text
+  answerText   String? @map("answer_text") @db.Text
+  transcript   String? @db.Text // STT 결과 (answerText와 동일하게 쓰거나 원본 보관)
+  mediaMetrics Json?   @map("media_metrics") // 답변별 시선/표정/음성톤 요약 지표
+  intent       String? @db.Text
+  feedback     String? @db.Text
+
+  interview Interview           @relation(fields: [interviewId], references: [id])
+  parent    InterviewQuestion?  @relation("QuestionFollowUps", fields: [parentId], references: [id])
+  followUps InterviewQuestion[] @relation("QuestionFollowUps")
+
+  @@map("interview_questions")
+}
+
+// 7. 면접 종합 평가 테이블 (Interview와 1:1)
+model InterviewEvaluation {
+  id               Int      @id @default(autoincrement())
+  interviewId      Int      @unique @map("interview_id")
+  overallScore     Int      @map("overall_score")
+  contentScore     Int      @map("content_score")
+  deliveryScore    Int      @map("delivery_score")
+  confidenceScore  Int      @map("confidence_score")
+  strengths        Json // string[]
+  weaknesses       Json // string[]
+  suggestions      Json // string[]
+  metrics          Json? // [{ name, score, comment }]
+  heartRateSummary Json?    @map("heart_rate_summary") // rPPG 심박 요약 (avg/min/max 등)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  interview Interview @relation(fields: [interviewId], references: [id])
+
+  @@map("interview_evaluations")
+}

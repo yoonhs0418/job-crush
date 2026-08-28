@@ -1,0 +1,19 @@
+# 의존성 및 빌드 결과물 (가장 중요)
+node_modules
+**/node_modules
+dist
+**/dist
+build
+**/build
+
+# Git 및 설정 파일
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# 로그 및 임시 파일
+*.log
+.vscode
+.DS_Store

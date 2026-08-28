@@ -1,0 +1,16 @@
+# 최상위 EditorConfig 파일임을 명시
+root = true
+
+[*]
+# 문자셋 설정
+charset = utf-8
+# 들여쓰기 스타일 (space 또는 tab)
+indent_style = space
+# 들여쓰기 칸 수
+indent_size = 2
+# 줄바꿈 방식 (lf: Line Feed, crlf: Carriage Return + Line Feed)
+end_of_line = lf
+# 파일 마지막에 빈 줄 추가
+insert_final_newline = true
+# 줄 끝에 있는 불필요한 공백 제거
+trim_trailing_whitespace = true
