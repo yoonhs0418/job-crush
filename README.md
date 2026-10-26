@@ -5,7 +5,7 @@
 
 > **출처**
 > 한신대학교 AI·SW캡스톤디자인2(2026-1) 팀 프로젝트입니다.
-> 원본 저장소: [Hanshin-OSS-Hub/capstone25-job-crush](https://github.com/Hanshin-OSS-Hub/capstone25-job-crush)
+> 원본 저장소: [Hanshin-OSS-Hub/capstone25-job-crush](...)
 > **이 저장소는 최종 산출물(`Release` 브랜치)을 개인 계정에 정리한 사본입니다.**
 > fork가 아닌 독립 저장소이며, 원본의 커밋 히스토리는 포함되어 있지 않습니다.
 
